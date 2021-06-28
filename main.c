@@ -72,24 +72,25 @@
 
 typedef enum
 {
-    KEY_NA,
-    KEY_PUSH,
-    KEY_POP,
-    KEY_CLICK,
-    KEY_LONG_PRESS,
-    KEY_REPEAT,
-    KEY_DBL_CLICK,
-    KEY_DBL_LONG_PRESS,
-    KEY_DBL_REPEAT,
-} key_event_t;
+    BTN_NA,
+    BTN_PUSH,
+    BTN_POP,
+    BTN_CLICK,
+    BTN_LONG_PRESS,
+    BTN_REPEAT,
+    BTN_DBL_CLICK,
+    BTN_DBL_LONG_PRESS,
+    BTN_DBL_REPEAT,
+} btn_event_t;
 
-typedef struct
+typedef struct btn_s
 {
     const uint16_t pin        ;
     uint32_t       timer      ; // universal timer
-    uint32_t       push_timer ; // interval between events KEY_PUSH
-    key_event_t    prev_status;
+    uint32_t       push_timer ; // interval between events BTN_PUSH
+    btn_event_t    prev_status;
     bool           dbl_flag   ;
+    void           (*event)(struct btn_s *const _btn, const btn_event_t _event);
 } btn_t;
 
 btn_t btns[] =
@@ -105,21 +106,20 @@ btn_t btns[] =
 /**************************************************************************************************/
 
 void btn_debounce(btn_t *const _btn, const uint32_t _period, const uint16_t _port_val) __attribute__((nonnull));
-void btn_event(btn_t *const _btn, const key_event_t _event) __attribute__((nonnull));
 
-void btn_event(btn_t *const _btn, const key_event_t _event)
+static __INLINE void _btn_event(btn_t *const _btn, const btn_event_t _event)
 {
-
+    if (_btn->event != NULL) _btn->event(_btn, _event);
 }
 
 void btn_debounce(btn_t *const _btn, const uint32_t _period, const uint16_t _port_val)
 {
-    const key_event_t curr = (_port_val & _btn->pin) ? KEY_POP : KEY_PUSH;
+    const btn_event_t curr = (_port_val & _btn->pin) ? BTN_POP : BTN_PUSH;
     
     // Debounce
     if (_btn->prev_status != curr)
     {
-        _btn->timer = (_btn->prev_status == KEY_NA) ? BTN_TOUT_DEB + 1 : 0;
+        _btn->timer = (_btn->prev_status == BTN_NA) ? BTN_TOUT_DEB + 1 : 0;
         _btn->prev_status = curr;
     }
     else
@@ -134,9 +134,9 @@ void btn_debounce(btn_t *const _btn, const uint32_t _period, const uint16_t _por
         && _btn->timer >= BTN_TOUT_DEB
         )
     {
-        btn_event(_btn, curr); // KEY_POP, KEY_PUSH
+        _btn_event(_btn, curr); // BTN_POP, BTN_PUSH
         
-        if (curr == KEY_PUSH)
+        if (curr == BTN_PUSH)
         {
             _btn->dbl_flag = (bool)(_btn->push_timer < BTN_DBL_TOUT);
             _btn->push_timer = 0;
@@ -149,25 +149,25 @@ void btn_debounce(btn_t *const _btn, const uint32_t _period, const uint16_t _por
         && _btn->timer < BTN_DBL_TOUT
         )
     {
-        key_event_t event = _btn->dbl_flag ? KEY_DBL_CLICK : KEY_CLICK;
-        btn_event(_btn, event); // KEY_DBL_CLICK, KEY_CLICK
+        const btn_event_t event = _btn->dbl_flag ? BTN_DBL_CLICK : BTN_CLICK;
+        _btn_event(_btn, event); // BTN_DBL_CLICK, BTN_CLICK
     }
 
-    if (_btn->prev_status == KEY_PUSH)
+    if (_btn->prev_status == BTN_PUSH)
     {
         if (true
             && _btn->timer - _period < BTN_LONG_TOUT
             && _btn->timer >= BTN_LONG_TOUT
             )
         {
-            key_event_t event = _btn->dbl_flag ? KEY_DBL_LONG_PRESS : KEY_LONG_PRESS;
-            btn_event(_btn, event); // KEY_DBL_LONG_PRESS, KEY_LONG_PRESS
+            const btn_event_t event = _btn->dbl_flag ? BTN_DBL_LONG_PRESS : BTN_LONG_PRESS;
+            _btn_event(_btn, event); // BTN_DBL_LONG_PRESS, BTN_LONG_PRESS
         }
         
         if (_btn->timer > BTN_REPEAT_TOUT)
         {
-            key_event_t event = _btn->dbl_flag ? KEY_DBL_REPEAT : KEY_REPEAT;
-            btn_event(_btn, event); // KEY_DBL_REPEAT, KEY_REPEAT
+            const btn_event_t event = _btn->dbl_flag ? BTN_DBL_REPEAT : BTN_REPEAT;
+            _btn_event(_btn, event); // BTN_DBL_REPEAT, BTN_REPEAT
             _btn->timer -= BTN_REPEAT_INTERVAL;
         }
     }
