@@ -8,6 +8,9 @@
 #include "RTE_Components.h"
 #include CMSIS_device_header
 
+#include <stdlib.h>
+#include <stdbool.h>
+
 #if !defined(__CC_ARM) && defined(__ARMCC_VERSION) && !defined(__OPTIMIZE__)
     /*
     Without this directive, it does not start if -o0 optimization is used and the "main"
@@ -44,6 +47,7 @@
 
 #define GPIO_BTN_RCC    RCC_APB2Periph_GPIOB
 #define GPIO_BTN_PORT   GPIOB
+
 #ifndef BTN_ROT
 #define GPIO_BTN_PIN_U  GPIO_Pin_5
 #define GPIO_BTN_PIN_C  GPIO_Pin_6
@@ -60,22 +64,148 @@
 #define BTN_PIN_MASK    \
     (GPIO_BTN_PIN_U | GPIO_BTN_PIN_C | GPIO_BTN_PIN_L | GPIO_BTN_PIN_D | GPIO_BTN_PIN_R)
 
+#define BTN_TOUT_DEB        (40)
+#define BTN_DBL_TOUT        (400)
+#define BTN_LONG_TOUT       (500)
+#define BTN_REPEAT_TOUT     (1500)
+#define BTN_REPEAT_INTERVAL (500)
+
+typedef enum
+{
+    KEY_NA,
+    KEY_PUSH,
+    KEY_POP,
+    KEY_CLICK,
+    KEY_LONG_PRESS,
+    KEY_REPEAT,
+    KEY_DBL_CLICK,
+    KEY_DBL_LONG_PRESS,
+    KEY_DBL_REPEAT,
+} key_event_t;
+
+typedef struct
+{
+    const uint16_t pin        ;
+    uint32_t       timer      ; // universal timer
+    uint32_t       push_timer ; // interval between events KEY_PUSH
+    key_event_t    prev_status;
+    bool           dbl_flag   ;
+} btn_t;
+
+btn_t btns[] =
+{
+    {.pin = GPIO_BTN_PIN_U},
+    {.pin = GPIO_BTN_PIN_C},
+    {.pin = GPIO_BTN_PIN_L},
+    {.pin = GPIO_BTN_PIN_D},
+    {.pin = GPIO_BTN_PIN_R},
+};
+
+// btns actions
+/**************************************************************************************************/
+
+void btn_debounce(btn_t *const _btn, const uint32_t _period, const uint16_t _port_val) __attribute__((nonnull));
+void btn_event(btn_t *const _btn, const key_event_t _event) __attribute__((nonnull));
+
+void btn_event(btn_t *const _btn, const key_event_t _event)
+{
+
+}
+
+void btn_debounce(btn_t *const _btn, const uint32_t _period, const uint16_t _port_val)
+{
+    const key_event_t curr = (_port_val & _btn->pin) ? KEY_POP : KEY_PUSH;
+    
+    // Debounce
+    if (_btn->prev_status != curr)
+    {
+        _btn->timer = (_btn->prev_status == KEY_NA) ? BTN_TOUT_DEB + 1 : 0;
+        _btn->prev_status = curr;
+    }
+    else
+    {
+        _btn->timer += _period;
+    }
+    
+    _btn->push_timer += _period;
+
+    if (true
+        && _btn->timer - _period < BTN_TOUT_DEB
+        && _btn->timer >= BTN_TOUT_DEB
+        )
+    {
+        btn_event(_btn, curr); // KEY_POP, KEY_PUSH
+        
+        if (curr == KEY_PUSH)
+        {
+            _btn->dbl_flag = (bool)(_btn->push_timer < BTN_DBL_TOUT);
+            _btn->push_timer = 0;
+        }
+    }
+    
+    if (true
+        && _btn->push_timer - _period < BTN_DBL_TOUT
+        && _btn->push_timer >= BTN_DBL_TOUT
+        && _btn->timer < BTN_DBL_TOUT
+        )
+    {
+        key_event_t event = _btn->dbl_flag ? KEY_DBL_CLICK : KEY_CLICK;
+        btn_event(_btn, event); // KEY_DBL_CLICK, KEY_CLICK
+    }
+
+    if (_btn->prev_status == KEY_PUSH)
+    {
+        if (true
+            && _btn->timer - _period < BTN_LONG_TOUT
+            && _btn->timer >= BTN_LONG_TOUT
+            )
+        {
+            key_event_t event = _btn->dbl_flag ? KEY_DBL_LONG_PRESS : KEY_LONG_PRESS;
+            btn_event(_btn, event); // KEY_DBL_LONG_PRESS, KEY_LONG_PRESS
+        }
+        
+        if (_btn->timer > BTN_REPEAT_TOUT)
+        {
+            key_event_t event = _btn->dbl_flag ? KEY_DBL_REPEAT : KEY_REPEAT;
+            btn_event(_btn, event); // KEY_DBL_REPEAT, KEY_REPEAT
+            _btn->timer -= BTN_REPEAT_INTERVAL;
+        }
+    }
+}
+
+/**************************************************************************************************/
+// btns actions
+
+// GPIO_LED blink
+static void _blinker(const uint32_t _period)
+{
+    static uint32_t time = 0;
+    time += _period;
+    
+    if (time >= 500)
+    {
+        uint16_t tmp = GPIO_ReadOutputData(GPIO_USR_LED_PORT);
+        tmp ^= GPIO_USR_LED_PIN;
+        GPIO_Write(GPIO_USR_LED_PORT, tmp);
+        
+        time -= 500;
+    }
+}
+
+
 void TIM1_UP_IRQHandler(void)
 {
-    volatile uint16_t tst = GPIO_ReadInputData(GPIO_BTN_PORT);
+    const uint32_t period  = 1000 / PWM_FREQ;
+    const uint16_t btns_val = GPIO_ReadInputData(GPIO_BTN_PORT);
 
-    if ((GPIO_ReadInputData(GPIO_BTN_PORT) & BTN_PIN_MASK) == BTN_PIN_MASK)
+    if ((btns_val & BTN_PIN_MASK) == BTN_PIN_MASK)
     {
-        // GPIO_LED blink
-        static volatile uint32_t i;
-        if (++i > (500 / 25))
-        {
-            uint16_t tmp = GPIO_ReadOutputData(GPIO_USR_LED_PORT);
-            tmp ^= GPIO_USR_LED_PIN;
-            GPIO_Write(GPIO_USR_LED_PORT, tmp);
-            
-            i = 0;
-        }
+        _blinker(period);
+    }
+    
+    for (size_t i = 0; i < (sizeof(btns) / sizeof(btns[0])); i++)
+    {
+        btn_debounce(&btns[i], period, btns_val);
     }
     
     TIM_ClearITPendingBit(PWM_TIMER, TIM_IT_Update);
