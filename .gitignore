@@ -1,5 +1,6 @@
-output/
-DebugConfig/
+output
+DebugConfig
+.vscode
 *.uvguix.*
 *.uvgui.*
 *.uvoptx

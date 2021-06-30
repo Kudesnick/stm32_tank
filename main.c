@@ -11,10 +11,11 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+#include "main.h"
 #include "bsp_btn.h"
 #include "bsp_led.h"
 #include "bsp_pwm.h"
-#include "btns.h"
+#include "appl_btn.h"
 
 #if !defined(__CC_ARM) && defined(__ARMCC_VERSION) && !defined(__OPTIMIZE__)
     /*
@@ -25,20 +26,6 @@
     __asm(".global __ARM_use_no_argv\n\t" "__ARM_use_no_argv:\n\t");
 #endif
 
-#define BLINK_INTERVAL  (1000) // (ms)
-#define PWM_GRADE       (16)
-#define PWM_FREQ        (50)   // (Hz)
-
-btn_t btns[] =
-{
-    {.pin = GPIO_BTN_PIN_U},
-    {.pin = GPIO_BTN_PIN_C},
-    {.pin = GPIO_BTN_PIN_L},
-    {.pin = GPIO_BTN_PIN_D},
-    {.pin = GPIO_BTN_PIN_R},
-};
-
-
 static void _time_handler(void)
 {
     const uint32_t period  = 1000 / PWM_FREQ;
@@ -48,15 +35,13 @@ static void _time_handler(void)
     {
         bsp_led_handle(period);
     }
-    
-    for (size_t i = 0; i < (sizeof(btns) / sizeof(btns[0])); i++)
-    {
-        btn_handle(&btns[i], period, btns_val);
-    }
+
+    appl_btn_handle(period, btns_val);
 }
 
 static void _init(void)
 {
+    appl_btn_init(PWM_GRADE);
     bsp_led_init(BLINK_INTERVAL);
     bsp_btn_init();
     bsp_pwm_init(PWM_FREQ, PWM_GRADE);

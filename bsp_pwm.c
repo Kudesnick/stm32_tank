@@ -21,13 +21,6 @@
 #define PWM_TIMER       TIM1
 #define PWM_TIMER_IRQ   TIM1_UP_IRQn
 
-typedef enum
-{
-    PWM_LEFT,
-    PWM_RIGHT,
-    PWM_CNT,
-} pwm_cnt_t;
-
 const struct
 {
     uint32_t apb;
