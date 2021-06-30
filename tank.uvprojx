@@ -384,6 +384,31 @@
           <GroupName>appl</GroupName>
           <Files>
             <File>
+              <FileName>appl_btn.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\appl_btn.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_btn.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\bsp_btn.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_led.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\bsp_led.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_pwm.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\bsp_pwm.c</FilePath>
+            </File>
+            <File>
+              <FileName>btns.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\btns.c</FilePath>
+            </File>
+            <File>
               <FileName>main.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\main.c</FilePath>
