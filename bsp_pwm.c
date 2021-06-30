@@ -45,7 +45,7 @@ const struct
 
 
 static uint32_t freq;
-static uint16_t grade;
+static int16_t grade;
 static void(*callback)(void);
 
 
@@ -117,11 +117,11 @@ void bsp_pwm_init(const uint32_t _freq, const uint32_t _grade)
         .TIM_OCMode         = TIM_OCMode_PWM1,
         .TIM_OutputState    = TIM_OutputState_Enable,
         .TIM_OutputNState   = TIM_OutputNState_Enable,
-        .TIM_Pulse          = grade / 2,
+        .TIM_Pulse          = 0,
         .TIM_OCIdleState    = TIM_OCIdleState_Set,
         .TIM_OCNIdleState   = TIM_OCIdleState_Set,
         .TIM_OCPolarity     = TIM_OCPolarity_High,
-        .TIM_OCNPolarity    = TIM_OCPolarity_High, // May be reversed
+        .TIM_OCNPolarity    = TIM_OCPolarity_High,
     };
     TIM_OC1Init(PWM_TIMER, &TIM_OCConfig);
     TIM_OC2Init(PWM_TIMER, &TIM_OCConfig);
@@ -155,7 +155,7 @@ void bsp_pwm_set(const uint8_t _n, const int16_t _duty)
             }
             else
             {
-                duty = 0 - duty;
+                duty = grade + duty;
                 _pin_mode_set(&pwm[_n].forward, GPIO_Mode_Out_OD);
 
                 _pin_mode_set(&pwm[_n].back, GPIO_Mode_AF_PP);

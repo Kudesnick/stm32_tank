@@ -17,7 +17,7 @@
 #include "bsp_btn.h"
 #include "bsp_pwm.h"
 
-static uint16_t grade;
+static int16_t grade;
 static int16_t duty_left, duty_right;
 
 static void _duty_upd(const int16_t _left, const int16_t _right)
@@ -53,7 +53,7 @@ static void _pwm_forward(struct btn_s *const _btn, const btn_event_t _event)
     (void)_btn;
     if (_event_ok(_event))
     {
-        const int16_t tmp = (duty_left + duty_right + 2 / 2);
+        const int16_t tmp = (duty_left + duty_right + 2) / 2;
         _duty_upd(tmp, tmp);
     }
 }
@@ -63,7 +63,7 @@ static void _pwm_back(struct btn_s *const _btn, const btn_event_t _event)
     (void)_btn;
     if (_event_ok(_event))
     {
-        const int16_t tmp = (duty_left + duty_right - 2 / 2);
+        const int16_t tmp = (duty_left + duty_right - 2) / 2;
         _duty_upd(tmp, tmp);
     }
 }
@@ -73,7 +73,7 @@ static void _pwm_left(struct btn_s *const _btn, const btn_event_t _event)
     (void)_btn;
     if (_event_ok(_event))
     {
-        _duty_upd(duty_left - 1, duty_left + 1);
+        _duty_upd(duty_left - 1, duty_right + 1);
     }
 }
 
@@ -82,7 +82,7 @@ static void _pwm_right(struct btn_s *const _btn, const btn_event_t _event)
     (void)_btn;
     if (_event_ok(_event))
     {
-        _duty_upd(duty_left + 1, duty_left - 1);
+        _duty_upd(duty_left + 1, duty_right - 1);
     }
 }
 
