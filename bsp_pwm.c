@@ -65,7 +65,7 @@ static void _pin_od_init(const gpio_t *const _gpio)
     GPIO_InitTypeDef GPIO_InitStructure =
     {
         .GPIO_Speed = GPIO_Speed_2MHz,
-        .GPIO_Mode  = GPIO_Mode_Out_OD,
+        .GPIO_Mode  = GPIO_Mode_Out_PP,
         .GPIO_Pin   = _gpio->pin,
     };
     GPIO_Init(_gpio->port, &GPIO_InitStructure);
@@ -85,7 +85,7 @@ static void _pin_mode_set(const gpio_t *const _gpio, const GPIOMode_TypeDef _mod
 }
 
 
-void bsp_pwm_init(const uint32_t _freq, const uint32_t _grade)
+void bsp_pwm_init(const uint32_t _freq, const uint16_t _grade)
 {
     freq = _freq;
     grade = _grade;
@@ -140,8 +140,8 @@ void bsp_pwm_set(const uint8_t _n, const int16_t _duty)
         if (_duty == 0)
         {
             GPIO_ResetBits(pwm[_n].en.port, pwm[_n].en.pin);
-            _pin_mode_set(&pwm[_n].forward, GPIO_Mode_Out_OD);
-            _pin_mode_set(&pwm[_n].back   , GPIO_Mode_Out_OD);
+            _pin_mode_set(&pwm[_n].forward, GPIO_Mode_Out_PP);
+            _pin_mode_set(&pwm[_n].back   , GPIO_Mode_Out_PP);
         }
         else
         {
@@ -149,14 +149,14 @@ void bsp_pwm_set(const uint8_t _n, const int16_t _duty)
 
             if (duty > 0)
             {
-                _pin_mode_set(&pwm[_n].back, GPIO_Mode_Out_OD);
+                _pin_mode_set(&pwm[_n].back, GPIO_Mode_Out_PP);
 
                 _pin_mode_set(&pwm[_n].forward, GPIO_Mode_AF_PP);
             }
             else
             {
                 duty = grade + duty;
-                _pin_mode_set(&pwm[_n].forward, GPIO_Mode_Out_OD);
+                _pin_mode_set(&pwm[_n].forward, GPIO_Mode_Out_PP);
 
                 _pin_mode_set(&pwm[_n].back, GPIO_Mode_AF_PP);
             }
