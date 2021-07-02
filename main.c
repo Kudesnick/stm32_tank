@@ -44,7 +44,7 @@ static void _init(void)
     appl_btn_init(PWM_GRADE);
     bsp_led_init(BLINK_INTERVAL);
     bsp_btn_init();
-    bsp_pwm_init(PWM_FREQ, PWM_GRADE);
+    bsp_pwm_init(PWM_FREQ, PWM_GRADE, PWM_MIN_DUTY);
     bsp_pwm_register_callback(_time_handler);
 }
 

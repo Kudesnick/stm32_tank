@@ -18,17 +18,23 @@
 #include "bsp_pwm.h"
 
 static int16_t grade;
+static int16_t min_duty;
 static int16_t duty_left, duty_right;
+
+static int16_t _duty_normalise(int16_t _duty)
+{
+    if (_duty > grade) _duty = grade;
+    if (_duty < -grade) _duty = -grade;
+    if (_duty > 0 && _duty < min_duty) _duty = min_duty;
+    if (_duty < 0 && _duty > -min_duty) _duty = -min_duty;
+    
+    return _duty;
+}
 
 static void _duty_upd(const int16_t _left, const int16_t _right)
 {
-    duty_left = _left;
-    duty_right = _right;
-
-    if (duty_left > grade) duty_left = grade;
-    if (duty_left < -grade) duty_left = -grade;
-    if (duty_right > grade) duty_right = grade;
-    if (duty_right < -grade) duty_right = -grade;
+    duty_left = _duty_normalise(_left);
+    duty_right = _duty_normalise(_right);
 
     bsp_pwm_set(PWM_LEFT, duty_left);
     bsp_pwm_set(PWM_RIGHT, duty_right);
@@ -95,9 +101,10 @@ btn_t btns[5] =
     {.pin = GPIO_BTN_PIN_R, .event = _pwm_right  },
 };
 
-void appl_btn_init(const uint16_t _grade)
+void appl_btn_init(const uint16_t _grade, const uint16_t _min_duty)
 {
     grade = _grade;
+    min_duty = _min_duty;
 }
 
 void appl_btn_handle(const uint32_t _period, const uint16_t _port_val)
