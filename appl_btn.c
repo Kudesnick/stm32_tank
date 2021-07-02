@@ -62,6 +62,10 @@ static void _pwm_forward(struct btn_s *const _btn, const btn_event_t _event)
         const int16_t tmp = (duty_left + duty_right + 2) / 2;
         _duty_upd(tmp, tmp);
     }
+    if (_event == BTN_DBL_CLICK)
+    {
+        _duty_upd(grade, grade);
+    }
 }
 
 static void _pwm_back(struct btn_s *const _btn, const btn_event_t _event)
@@ -71,6 +75,10 @@ static void _pwm_back(struct btn_s *const _btn, const btn_event_t _event)
     {
         const int16_t tmp = (duty_left + duty_right - 2) / 2;
         _duty_upd(tmp, tmp);
+    }
+    if (_event == BTN_DBL_CLICK)
+    {
+        _duty_upd(-grade, -grade);
     }
 }
 
