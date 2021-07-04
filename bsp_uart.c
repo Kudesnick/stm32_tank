@@ -13,14 +13,35 @@
 #include CMSIS_device_header
 
 #include <string.h>
+#include <stdbool.h>
 
 #include "bsp_uart.h"
 #include "bsp_gpio.h"
 
+#define UART_NUM        2
+
+#if UART_NUM == 1
+
+#define UART            USART1
+#define UART_RCC        RCC_APB1Periph_USART1
+#define UART_IRQ        USART1_IRQn
+#define UART_IRQHandler USART1_IRQHandler
+
+#define UART_PORT_RCC   RCC_APB2Periph_GPIOA
+#define UART_PORT       GPIOA
+#define UART_RX         GPIO_Pin_10
+#define UART_TX         GPIO_Pin_9
+
+#define UART_DMA_RCC    RCC_AHBPeriph_DMA1
+#define UART_DMA_RX     DMA1_Channel5
+#define UART_DMA_TX     DMA1_Channel4
+
+#elif UART_NUM == 2
 
 #define UART            USART2
 #define UART_RCC        RCC_APB1Periph_USART2
 #define UART_IRQ        USART2_IRQn
+#define UART_IRQHandler USART2_IRQHandler
 
 #define UART_PORT_RCC   RCC_APB2Periph_GPIOA
 #define UART_PORT       GPIOA
@@ -31,34 +52,65 @@
 #define UART_DMA_RX     DMA1_Channel6
 #define UART_DMA_TX     DMA1_Channel7
 
-uint8_t buf_rx[32];
+#elif UART_NUM == 3
 
-void bsp_uart_send(void)
+#define UART            USART3
+#define UART_RCC        RCC_APB1Periph_USART3
+#define UART_IRQ        USART3_IRQn
+#define UART_IRQHandler USART3_IRQHandler
+
+#define UART_PORT_RCC   RCC_APB2Periph_GPIOB
+#define UART_PORT       GPIOB
+#define UART_RX         GPIO_Pin_11
+#define UART_TX         GPIO_Pin_10
+
+#define UART_DMA_RCC    RCC_AHBPeriph_DMA1
+#define UART_DMA_RX     DMA1_Channel3
+#define UART_DMA_TX     DMA1_Channel2
+
+#else
+#error UART not configure!
+#endif
+
+static uint8_t *buf;
+static uint8_t buf_size;
+static uart_callback_t callback;
+
+static void _uart_send(void)
 {
     DMA_Cmd(UART_DMA_TX, DISABLE);
-    DMA_SetCurrDataCounter(UART_DMA_TX, strlen((const char *)buf_rx));
+    DMA_SetCurrDataCounter(UART_DMA_TX, strlen((const char *)buf));
     DMA_Cmd(UART_DMA_TX, ENABLE);
 }
 
-void USART2_IRQHandler(void)
+void UART_IRQHandler(void)
 {
     if (USART_GetFlagStatus(UART, USART_FLAG_IDLE) == SET)
     {
-        uint8_t i = sizeof(buf_rx) - DMA_GetCurrDataCounter(UART_DMA_RX);
-        if (i > 0 && buf_rx[i-1] == '\r')
+        uint8_t i = buf_size - DMA_GetCurrDataCounter(UART_DMA_RX);
+        if (i > 0 && buf[i-1] == '\r')
         {
             DMA_Cmd(UART_DMA_RX, DISABLE);
-            DMA_SetCurrDataCounter(UART_DMA_RX, sizeof(buf_rx));
+            DMA_SetCurrDataCounter(UART_DMA_RX, buf_size);
             DMA_Cmd(UART_DMA_RX, ENABLE);
-            buf_rx[i] = '\0';
-            bsp_uart_send();
+            buf[i] = '\0';
+            if (callback != NULL)
+            {
+                if (callback((char *const)buf, buf_size))
+                {
+                    _uart_send();
+                }
+            }
         }
         USART_ReceiveData(UART); // Clear IDLE flag
     }
 }
 
-void bsp_uart_int(const uint32_t _baud)
+void bsp_uart_int(const uint32_t _baud, uint8_t *const _buf_ptr, const uint8_t _size)
 {
+    buf = _buf_ptr;
+    buf_size = _size;
+
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | UART_PORT_RCC, ENABLE);
     GPIO_InitTypeDef GPIO_InitStructure =
     {
@@ -72,9 +124,9 @@ void bsp_uart_int(const uint32_t _baud)
     DMA_InitTypeDef DMA_InitStructure =
     {
         .DMA_PeripheralBaseAddr = (uint32_t)(&UART->DR),
-        .DMA_MemoryBaseAddr = (uint32_t)buf_rx,
+        .DMA_MemoryBaseAddr = (uint32_t)buf,
         .DMA_DIR = DMA_DIR_PeripheralSRC,
-        .DMA_BufferSize = sizeof(buf_rx),
+        .DMA_BufferSize = buf_size,
         .DMA_PeripheralInc = DMA_PeripheralInc_Disable,
         .DMA_MemoryInc = DMA_MemoryInc_Enable,
         .DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte,
@@ -106,4 +158,9 @@ void bsp_uart_int(const uint32_t _baud)
     USART_DMACmd(UART, USART_DMAReq_Rx, ENABLE);
     USART_DMACmd(UART, USART_DMAReq_Tx, ENABLE);
     USART_Cmd(UART, ENABLE);
+}
+
+void bsp_uart_register_callback(const uart_callback_t _call)
+{
+    callback = _call;
 }

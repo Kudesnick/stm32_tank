@@ -9,14 +9,14 @@
 #include CMSIS_device_header
 
 #include <stdlib.h>
-#include <stdbool.h>
 
 #include "main.h"
 #include "bsp_btn.h"
 #include "bsp_led.h"
 #include "bsp_pwm.h"
-#include "appl_btn.h"
 #include "bsp_uart.h"
+#include "appl_btn.h"
+#include "appl_serial.h"
 
 #if !defined(__CC_ARM) && defined(__ARMCC_VERSION) && !defined(__OPTIMIZE__)
     /*
@@ -42,12 +42,14 @@ static void _time_handler(void)
 
 static void _init(void)
 {
-    appl_btn_init(PWM_GRADE, PWM_MIN_DUTY);
+    static uint8_t uart_buf[BUF_SIZE];
+
     bsp_led_init(BLINK_INTERVAL);
     bsp_btn_init();
-    bsp_pwm_init(PWM_FREQ, PWM_GRADE);
+    bsp_pwm_init(PWM_FREQ, PWM_GRADE, PWM_MIN_DUTY);
     bsp_pwm_register_callback(_time_handler);
-    bsp_uart_int(115200);
+    bsp_uart_int(UART_BAUD, uart_buf, BUF_SIZE);
+    bsp_uart_register_callback(appl_serial_handle);
 }
 
 static void _loop(void)

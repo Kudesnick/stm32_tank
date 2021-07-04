@@ -46,8 +46,10 @@ const struct
 
 static uint32_t freq;
 static int16_t grade;
-static void(*callback)(void);
+static uint16_t min_duty;
+static pwm_callback_t callback;
 
+int16_t duty[PWM_CNT];
 
 void TIM1_UP_IRQHandler(void)
 {
@@ -85,10 +87,11 @@ static void _pin_mode_set(const gpio_t *const _gpio, const GPIOMode_TypeDef _mod
 }
 
 
-void bsp_pwm_init(const uint32_t _freq, const uint16_t _grade)
+void bsp_pwm_init(const uint32_t _freq, const uint16_t _grade, const uint16_t _min_duty)
 {
     freq = _freq;
     grade = _grade;
+    min_duty = (_min_duty) ? _min_duty - 1 : 0;
 
     // PWM_PINS
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
@@ -104,9 +107,9 @@ void bsp_pwm_init(const uint32_t _freq, const uint16_t _grade)
     RCC_APB2PeriphClockCmd(PWM_TIMER_RCC, ENABLE);
     TIM_TimeBaseInitTypeDef TIM_BaseConfig =
     {
-        .TIM_Prescaler          = SystemCoreClock / (freq * grade) - 1,
+        .TIM_Prescaler          = SystemCoreClock / (freq * (grade + min_duty)) - 1,
         .TIM_CounterMode        = TIM_CounterMode_Up,
-        .TIM_Period             = grade - 1,
+        .TIM_Period             = grade + min_duty - 1,
         .TIM_ClockDivision      = 0,
         .TIM_RepetitionCounter  = 0,
     };
@@ -139,35 +142,40 @@ void bsp_pwm_set(const uint8_t _n, const int16_t _duty)
     {
         if (_duty == 0)
         {
+            duty[_n] = 0;
             GPIO_ResetBits(pwm[_n].en.port, pwm[_n].en.pin);
             _pin_mode_set(&pwm[_n].forward, GPIO_Mode_Out_PP);
             _pin_mode_set(&pwm[_n].back   , GPIO_Mode_Out_PP);
         }
         else
         {
-            int16_t duty = (_duty > grade) ? grade : _duty;
+            duty[_n] = (_duty > grade) ? grade : _duty;
+            duty[_n] = (duty[_n] < (-grade)) ? (-grade) : duty[_n];
+            
+            int16_t tmp = duty[_n];
 
-            if (duty > 0)
+            if (tmp > 0)
             {
+                tmp += min_duty;
                 _pin_mode_set(&pwm[_n].back, GPIO_Mode_Out_PP);
 
                 _pin_mode_set(&pwm[_n].forward, GPIO_Mode_AF_PP);
             }
             else
             {
-                duty = grade + duty;
+                tmp = grade + tmp - min_duty;
                 _pin_mode_set(&pwm[_n].forward, GPIO_Mode_Out_PP);
 
                 _pin_mode_set(&pwm[_n].back, GPIO_Mode_AF_PP);
             }
 
-            if (_n == 0)
+            if (_n == PWM_LEFT)
             {
-                TIM_SetCompare1(PWM_TIMER, duty);
+                TIM_SetCompare1(PWM_TIMER, tmp);
             }
-            else
+            else if (_n == PWM_RIGHT)
             {
-                TIM_SetCompare2(PWM_TIMER, duty);
+                TIM_SetCompare2(PWM_TIMER, tmp);
             }
 
             GPIO_SetBits(pwm[_n].en.port, pwm[_n].en.pin);
@@ -175,8 +183,12 @@ void bsp_pwm_set(const uint8_t _n, const int16_t _duty)
     }
 }
 
+int16_t bsp_pwm_get(const uint8_t _n)
+{
+    return (_n < PWM_CNT) ? duty[_n] : 0;
+}
 
-void bsp_pwm_register_callback(void(*_call)(void))
+void bsp_pwm_register_callback(const pwm_callback_t _call)
 {
     callback = _call;
 }
