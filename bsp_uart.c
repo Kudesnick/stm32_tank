@@ -26,27 +26,26 @@
 #define UART_TX         GPIO_Pin_2
 
 
-#define UART_DMA_TX
-#define UART_DMA_TX_RCC
-#define UART_DMA_TX_CH
+#define UART_DMA_RX     DMA1_Channel6
+#define UART_DMA_RX_RCC RCC_AHBPeriph_DMA1
 
+uint8_t buf_rx[32];
 
 void USART2_IRQHandler(void)
 {
-    volatile static uint8_t i = 0;
-
-    if (USART_GetFlagStatus(UART, USART_FLAG_RXNE) == SET)
-    {
-        i = UART->DR;
-    }
     if (USART_GetFlagStatus(UART, USART_FLAG_IDLE) == SET)
     {
-        i = UART->DR;
+        uint8_t i = sizeof(buf_rx) - DMA_GetCurrDataCounter(UART_DMA_RX);
+        if (i > 0 && buf_rx[i-1] == '\r')
+        {
+            DMA_Cmd(UART_DMA_RX, DISABLE);
+            DMA_SetCurrDataCounter(UART_DMA_RX, sizeof(buf_rx));
+            DMA_Cmd(UART_DMA_RX, ENABLE);
+            buf_rx[i-1] = '\0';
+        }
+        USART_ReceiveData(UART);
     }
-    
-    USART_ClearFlag(UART, USART_FLAG_RXNE | USART_FLAG_IDLE);
 }
-
 
 void bsp_uart_int(const uint32_t _baud)
 {
@@ -54,10 +53,28 @@ void bsp_uart_int(const uint32_t _baud)
     GPIO_InitTypeDef GPIO_InitStructure =
     {
         .GPIO_Speed = GPIO_Speed_2MHz,
-        .GPIO_Mode  = GPIO_Mode_AF_PP,
+        .GPIO_Mode  = GPIO_Mode_AF_OD,
         .GPIO_Pin   = UART_RX | UART_TX,
     };
     GPIO_Init(UART_PORT, &GPIO_InitStructure);
+
+    RCC_AHBPeriphClockCmd(UART_DMA_RX_RCC, ENABLE);
+    DMA_InitTypeDef DMA_InitStructure =
+    {
+        .DMA_PeripheralBaseAddr = (uint32_t)(&UART->DR),
+        .DMA_MemoryBaseAddr = (uint32_t)buf_rx,
+        .DMA_DIR = DMA_DIR_PeripheralSRC,
+        .DMA_BufferSize = sizeof(buf_rx),
+        .DMA_PeripheralInc = DMA_PeripheralInc_Disable,
+        .DMA_MemoryInc = DMA_MemoryInc_Enable,
+        .DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte,
+        .DMA_MemoryDataSize = DMA_MemoryDataSize_Byte,
+        .DMA_Mode = DMA_Mode_Normal,
+        .DMA_Priority = DMA_Priority_Low,
+        .DMA_M2M = DMA_M2M_Disable,
+    };
+    DMA_Init(UART_DMA_RX, &DMA_InitStructure);
+    DMA_Cmd(UART_DMA_RX, ENABLE);
 
     RCC_APB1PeriphClockCmd(UART_RCC, ENABLE);
     USART_InitTypeDef USART_InitStructure =
@@ -70,12 +87,10 @@ void bsp_uart_int(const uint32_t _baud)
         .USART_Mode = USART_Mode_Rx | USART_Mode_Tx,
     };
     USART_Init(UART, &USART_InitStructure);
-    USART_ClockInitTypeDef USART_ClockInitStructure;
-    USART_ClockStructInit(&USART_ClockInitStructure);
-    USART_ClockInit(UART, &USART_ClockInitStructure);
-    NVIC_EnableIRQ(UART_IRQ);
-    USART_ITConfig(UART, USART_IT_RXNE | USART_IT_IDLE, ENABLE);
 
-//    USART_DMACmd(UART, USART_DMAReq_Rx, ENABLE);
+    NVIC_EnableIRQ(UART_IRQ);
+    USART_ITConfig(UART, USART_IT_IDLE, ENABLE);
+
+    USART_DMACmd(UART, USART_DMAReq_Rx, ENABLE);
     USART_Cmd(UART, ENABLE);
 }
