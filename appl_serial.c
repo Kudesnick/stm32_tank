@@ -16,7 +16,12 @@
 
 #include "bsp_pwm.h"
 #include "main.h"
- 
+
+static void _print_state(char *const _str)
+{
+    sprintf(_str, "L:%d R:%d\r", bsp_pwm_get(PWM_LEFT), bsp_pwm_get(PWM_RIGHT));
+}
+
 bool appl_serial_handle(char *const _str, const uint8_t _max_size)
 {
     while(strchr(_str, '\r'))
@@ -24,45 +29,48 @@ bool appl_serial_handle(char *const _str, const uint8_t _max_size)
         *strchr(_str, '\r') = '\0';
     }
     
-    if (false
-        || strcmp("stop", _str) == 0
-        || strcmp("STOP", _str) == 0
-        || strcmp("off", _str) == 0
-        || strcmp("OFF", _str) == 0
-       )
+    if (strcmp("stop", _str) == 0)
     {
             bsp_pwm_set(PWM_LEFT, 0);
             bsp_pwm_set(PWM_RIGHT, 0);
             strcpy(_str, "System off!\r");
     }
+    else if (strcmp("date", _str) == 0)
+    {
+        sprintf(_str, __DATE__ "\r");
+    }
     else if (strcmp("info", _str) == 0)
     {
-        sprintf(_str, "freq:%d, grade:%d\r", PWM_FREQ, PWM_GRADE);
+        sprintf(_str, "freq:%d grade:%d\r", PWM_FREQ, PWM_GRADE);
     }
     else if (strcmp("state", _str) == 0)
     {
-        sprintf(_str, "L:%d, R:%d\r", bsp_pwm_get(PWM_LEFT), bsp_pwm_get(PWM_RIGHT));
+        _print_state(_str);
     }
     else
     {
-        int16_t left = 0;
-        int16_t right = 0;
+        int left  = 0;
+        int right = 0;
+        int len   = 0;
         
         if (false
-            || sscanf(_str, "L%dR%d", (int *)&left, (int *)&right) == 2
-            || sscanf(_str, "R%dL%d", (int *)&left, (int *)&right) == 2
+            || (sscanf(_str, "L%dR%d%n", &left, &right, &len) == 2 && len == strlen(_str))
+            || (sscanf(_str, "R%dL%d%n", &left, &right, &len) == 2 && len == strlen(_str))
             )
         {
             bsp_pwm_set(PWM_LEFT, left);
             bsp_pwm_set(PWM_RIGHT, right);
+            _print_state(_str);
         }
-        else if (sscanf(_str, "L%d", (int *)&left) == 1)
+        else if (sscanf(_str, "L%d%n", &left, &len) == 1 && len == strlen(_str))
         {
-            bsp_pwm_set(PWM_LEFT, left);        
+            bsp_pwm_set(PWM_LEFT, left);
+            _print_state(_str);
         }
-        else if (sscanf(_str, "R%d", (int *)&right) == 1)
+        else if (sscanf(_str, "R%d%n", &right, &len) == 1 && len == strlen(_str))
         {
-            bsp_pwm_set(PWM_RIGHT, right);        
+            bsp_pwm_set(PWM_RIGHT, right);
+            _print_state(_str);
         }
         else
         {
