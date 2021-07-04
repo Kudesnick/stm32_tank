@@ -16,6 +16,7 @@
 #include "bsp_led.h"
 #include "bsp_pwm.h"
 #include "appl_btn.h"
+#include "bsp_uart.h"
 
 #if !defined(__CC_ARM) && defined(__ARMCC_VERSION) && !defined(__OPTIMIZE__)
     /*
@@ -46,6 +47,7 @@ static void _init(void)
     bsp_btn_init();
     bsp_pwm_init(PWM_FREQ, PWM_GRADE);
     bsp_pwm_register_callback(_time_handler);
+    bsp_uart_int(115200);
 }
 
 static void _loop(void)
