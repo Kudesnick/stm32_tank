@@ -12,6 +12,8 @@
 #include "RTE_Components.h"
 #include CMSIS_device_header
 
+#include <string.h>
+
 #include "bsp_uart.h"
 #include "bsp_gpio.h"
 
@@ -25,11 +27,18 @@
 #define UART_RX         GPIO_Pin_3
 #define UART_TX         GPIO_Pin_2
 
-
+#define UART_DMA_RCC    RCC_AHBPeriph_DMA1
 #define UART_DMA_RX     DMA1_Channel6
-#define UART_DMA_RX_RCC RCC_AHBPeriph_DMA1
+#define UART_DMA_TX     DMA1_Channel7
 
 uint8_t buf_rx[32];
+
+void bsp_uart_send(void)
+{
+    DMA_Cmd(UART_DMA_TX, DISABLE);
+    DMA_SetCurrDataCounter(UART_DMA_TX, strlen((const char *)buf_rx));
+    DMA_Cmd(UART_DMA_TX, ENABLE);
+}
 
 void USART2_IRQHandler(void)
 {
@@ -41,9 +50,10 @@ void USART2_IRQHandler(void)
             DMA_Cmd(UART_DMA_RX, DISABLE);
             DMA_SetCurrDataCounter(UART_DMA_RX, sizeof(buf_rx));
             DMA_Cmd(UART_DMA_RX, ENABLE);
-            buf_rx[i-1] = '\0';
+            buf_rx[i] = '\0';
+            bsp_uart_send();
         }
-        USART_ReceiveData(UART);
+        USART_ReceiveData(UART); // Clear IDLE flag
     }
 }
 
@@ -58,7 +68,7 @@ void bsp_uart_int(const uint32_t _baud)
     };
     GPIO_Init(UART_PORT, &GPIO_InitStructure);
 
-    RCC_AHBPeriphClockCmd(UART_DMA_RX_RCC, ENABLE);
+    RCC_AHBPeriphClockCmd(UART_DMA_RCC, ENABLE);
     DMA_InitTypeDef DMA_InitStructure =
     {
         .DMA_PeripheralBaseAddr = (uint32_t)(&UART->DR),
@@ -75,6 +85,8 @@ void bsp_uart_int(const uint32_t _baud)
     };
     DMA_Init(UART_DMA_RX, &DMA_InitStructure);
     DMA_Cmd(UART_DMA_RX, ENABLE);
+    DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralDST;
+    DMA_Init(UART_DMA_TX, &DMA_InitStructure);
 
     RCC_APB1PeriphClockCmd(UART_RCC, ENABLE);
     USART_InitTypeDef USART_InitStructure =
@@ -92,5 +104,6 @@ void bsp_uart_int(const uint32_t _baud)
     USART_ITConfig(UART, USART_IT_IDLE, ENABLE);
 
     USART_DMACmd(UART, USART_DMAReq_Rx, ENABLE);
+    USART_DMACmd(UART, USART_DMAReq_Tx, ENABLE);
     USART_Cmd(UART, ENABLE);
 }
