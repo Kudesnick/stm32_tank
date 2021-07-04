@@ -13,4 +13,5 @@
 
 #define BLINK_INTERVAL  (1000) // (ms)
 #define PWM_GRADE       (16)
-#define PWM_FREQ        (50)   // (Hz)
+#define PWM_FREQ        (200)   // (Hz)
+#define PWM_MIN_DUTY    (3)

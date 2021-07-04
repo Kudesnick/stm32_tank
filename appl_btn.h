@@ -14,5 +14,5 @@
 #include <stdint.h>
 
 
-void appl_btn_init(const uint16_t _grade);
+void appl_btn_init(const uint16_t _grade, const uint16_t _min_duty);
 void appl_btn_handle(const uint32_t _period, const uint16_t _port_val);

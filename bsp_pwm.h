@@ -21,6 +21,6 @@ typedef enum
     PWM_CNT,
 } pwm_cnt_t;
 
-void bsp_pwm_init(const uint32_t _freq, const uint32_t _grade);
+void bsp_pwm_init(const uint32_t _freq, const uint16_t _grade);
 void bsp_pwm_set(const uint8_t _n, const int16_t _duty);
 void bsp_pwm_register_callback(void(*_call)(void));
