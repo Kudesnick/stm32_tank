@@ -17,6 +17,9 @@
 #include "bsp_btn.h"
 #include "bsp_pwm.h"
 
+#define INC (16)
+#define MAX (512)
+
 static void _duty_upd(const int16_t _left, const int16_t _right)
 {
     bsp_pwm_set(PWM_LEFT, _left);
@@ -57,12 +60,12 @@ static void _pwm_forward(struct btn_s *const _btn, const btn_event_t _event)
     (void)_btn;
     if (_event_ok(_event))
     {
-        const int16_t tmp = (bsp_pwm_get(PWM_LEFT) + bsp_pwm_get(PWM_RIGHT) + 2) / 2;
+        const int16_t tmp = (bsp_pwm_get(PWM_LEFT) + bsp_pwm_get(PWM_RIGHT) + INC * 2) / 2;
         _duty_upd(tmp, tmp);
     }
     if (_event == BTN_DBL_CLICK)
     {
-        _duty_upd(255, 255);
+        _duty_upd(MAX, MAX);
     }
 }
 
@@ -71,12 +74,12 @@ static void _pwm_back(struct btn_s *const _btn, const btn_event_t _event)
     (void)_btn;
     if (_event_ok(_event))
     {
-        const int16_t tmp = (bsp_pwm_get(PWM_LEFT) + bsp_pwm_get(PWM_RIGHT) - 2) / 2;
+        const int16_t tmp = (bsp_pwm_get(PWM_LEFT) + bsp_pwm_get(PWM_RIGHT) - INC * 2) / 2;
         _duty_upd(tmp, tmp);
     }
     if (_event == BTN_DBL_CLICK)
     {
-        _duty_upd(-255, -255);
+        _duty_upd(-MAX, -MAX);
     }
 }
 
@@ -85,7 +88,7 @@ static void _pwm_left(struct btn_s *const _btn, const btn_event_t _event)
     (void)_btn;
     if (_event_ok(_event))
     {
-        _duty_upd(bsp_pwm_get(PWM_LEFT) - 1, bsp_pwm_get(PWM_RIGHT) + 1);
+        _duty_upd(bsp_pwm_get(PWM_LEFT) - INC, bsp_pwm_get(PWM_RIGHT) + INC);
     }
 }
 
@@ -94,7 +97,7 @@ static void _pwm_right(struct btn_s *const _btn, const btn_event_t _event)
     (void)_btn;
     if (_event_ok(_event))
     {
-        _duty_upd(bsp_pwm_get(PWM_LEFT) + 1, bsp_pwm_get(PWM_RIGHT) - 1);
+        _duty_upd(bsp_pwm_get(PWM_LEFT) + INC, bsp_pwm_get(PWM_RIGHT) - INC);
     }
 }
 

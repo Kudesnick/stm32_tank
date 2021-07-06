@@ -18,7 +18,7 @@
 #include "bsp_uart.h"
 #include "bsp_gpio.h"
 
-#define UART_NUM        2
+#define UART_NUM        3
 
 #if UART_NUM == 1
 

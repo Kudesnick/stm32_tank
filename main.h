@@ -12,8 +12,8 @@
 #pragma once
 
 #define BLINK_INTERVAL  (1000) // (ms)
-#define PWM_GRADE       (16)
+#define PWM_GRADE       (256)
 #define PWM_FREQ        (200)   // (Hz)
-#define PWM_MIN_DUTY    (3)
+#define PWM_MIN_DUTY    (64)
 #define BUF_SIZE        (32)
 #define UART_BAUD       (115200)
