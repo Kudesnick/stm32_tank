@@ -31,9 +31,24 @@ static bool _event_ok(const btn_event_t _event)
 static void _pwm_stop(struct btn_s *const _btn, const btn_event_t _event)
 {
     (void)_btn;
+    static bool not_brake = false;
     if (_event != BTN_POP)
     {
         _duty_upd(0, 0);
+        
+        if (_event == BTN_LONG_PRESS)
+        {
+            not_brake = true;
+        }
+    }
+    else
+    {
+        if (!not_brake)
+        {
+            bsp_pwm_brake();
+        }
+        
+        not_brake = false;
     }
 }
 

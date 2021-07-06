@@ -136,6 +136,18 @@ void bsp_pwm_init(const uint32_t _freq, const uint16_t _grade, const uint16_t _m
 }
 
 
+void bsp_pwm_brake(void)
+{
+    
+
+    for (uint8_t i = 0; i < PWM_CNT; i++)
+    {
+        bsp_pwm_set(i, 0);
+        GPIO_SetBits(pwm[i].en.port, pwm[i].en.pin);
+    }
+}
+
+
 void bsp_pwm_set(const uint8_t _n, const int16_t _duty)
 {
     if (_n < PWM_CNT)
@@ -163,7 +175,7 @@ void bsp_pwm_set(const uint8_t _n, const int16_t _duty)
             }
             else
             {
-                tmp = grade + tmp - min_duty;
+                tmp = grade + tmp;
                 _pin_mode_set(&pwm[_n].forward, GPIO_Mode_Out_PP);
 
                 _pin_mode_set(&pwm[_n].back, GPIO_Mode_AF_PP);

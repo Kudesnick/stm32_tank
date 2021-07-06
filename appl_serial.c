@@ -29,7 +29,12 @@ bool appl_serial_handle(char *const _str, const uint8_t _max_size)
         *strchr(_str, '\r') = '\0';
     }
     
-    if (strcmp("stop", _str) == 0)
+    if (strcmp("brake", _str) == 0)
+    {
+            bsp_pwm_brake();
+            strcpy(_str, "Brake!\r");
+    }
+    else if (strcmp("stop", _str) == 0)
     {
             bsp_pwm_set(PWM_LEFT, 0);
             bsp_pwm_set(PWM_RIGHT, 0);

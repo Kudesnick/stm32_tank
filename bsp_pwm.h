@@ -24,6 +24,7 @@ typedef enum
 typedef void(*pwm_callback_t)(void);
 
 void bsp_pwm_init(const uint32_t _freq, const uint16_t _grade, const uint16_t _min_duty);
+void bsp_pwm_brake(void);
 void bsp_pwm_set(const uint8_t _n, const int16_t _duty);
 int16_t bsp_pwm_get(const uint8_t _n);
 void bsp_pwm_register_callback(const pwm_callback_t _call);
