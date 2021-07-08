@@ -18,12 +18,12 @@
 #include "bsp_uart.h"
 #include "bsp_gpio.h"
 
-#define UART_NUM        3
+#define UART_NUM        1
 
 #if UART_NUM == 1
 
 #define UART            USART1
-#define UART_RCC        RCC_APB1Periph_USART1
+#define UART_RCC        RCC_APB2Periph_USART1
 #define UART_IRQ        USART1_IRQn
 #define UART_IRQHandler USART1_IRQHandler
 
@@ -116,8 +116,11 @@ void bsp_uart_int(const uint32_t _baud, uint8_t *const _buf_ptr, const uint8_t _
     {
         .GPIO_Speed = GPIO_Speed_2MHz,
         .GPIO_Mode  = GPIO_Mode_AF_OD,
-        .GPIO_Pin   = UART_RX | UART_TX,
+        .GPIO_Pin   = UART_TX,
     };
+    GPIO_Init(UART_PORT, &GPIO_InitStructure);
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
+    GPIO_InitStructure.GPIO_Pin  = UART_RX;
     GPIO_Init(UART_PORT, &GPIO_InitStructure);
 
     RCC_AHBPeriphClockCmd(UART_DMA_RCC, ENABLE);
@@ -140,7 +143,7 @@ void bsp_uart_int(const uint32_t _baud, uint8_t *const _buf_ptr, const uint8_t _
     DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralDST;
     DMA_Init(UART_DMA_TX, &DMA_InitStructure);
 
-    RCC_APB1PeriphClockCmd(UART_RCC, ENABLE);
+    RCC_APB2PeriphClockCmd(UART_RCC, ENABLE);
     USART_InitTypeDef USART_InitStructure =
     {
         .USART_BaudRate = _baud,

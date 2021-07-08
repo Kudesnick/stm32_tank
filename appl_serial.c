@@ -42,7 +42,7 @@ bool appl_serial_handle(char *const _str, const uint8_t _max_size)
     }
     else if (strcmp("date", _str) == 0)
     {
-        sprintf(_str, __DATE__ "\r");
+        sprintf(_str, __DATE__ "[" __TIME__ "]" "\r");
     }
     else if (strcmp("info", _str) == 0)
     {
