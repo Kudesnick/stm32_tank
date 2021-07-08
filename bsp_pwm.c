@@ -13,6 +13,8 @@
 #include "RTE_Components.h"
 #include CMSIS_device_header
 
+#include "stdlib.h"
+
 #include "bsp_pwm.h"
 #include "bsp_gpio.h"
 
@@ -24,22 +26,22 @@
 const struct
 {
     uint32_t apb;
-    gpio_t   forward;
+    gpio_t   frwd;
     gpio_t   back;
-    gpio_t   en;
+    gpio_t   pwm;
 } pwm[PWM_CNT] =
 {
     {
-        .apb = RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB,
-        .forward = {GPIOA, GPIO_Pin_8},
-        .back    = {GPIOB, GPIO_Pin_13},
-        .en      = {GPIOB, GPIO_Pin_12},
+        .apb  = /* RCC_APB2Periph_GPIOA | */ RCC_APB2Periph_GPIOB,
+        .frwd = {GPIOB, GPIO_Pin_12},
+        .back = {GPIOB, GPIO_Pin_15},
+        .pwm  = {GPIOB, GPIO_Pin_13},
     },
     {
-        .apb = RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB,
-        .forward = {GPIOA, GPIO_Pin_9},
-        .back    = {GPIOB, GPIO_Pin_14},
-        .en      = {GPIOB, GPIO_Pin_15},
+        .apb  = RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB,
+        .frwd = {GPIOA, GPIO_Pin_8},
+        .back = {GPIOA, GPIO_Pin_15},
+        .pwm  = {GPIOB, GPIO_Pin_14},
     },
 };
 
@@ -62,7 +64,7 @@ void TIM1_UP_IRQHandler(void)
 }
 
 
-static void _pin_od_init(const gpio_t *const _gpio)
+static void _pin_out_init(const gpio_t *const _gpio)
 {
     GPIO_InitTypeDef GPIO_InitStructure =
     {
@@ -98,9 +100,9 @@ void bsp_pwm_init(const uint32_t _freq, const uint16_t _grade, const uint16_t _m
     for (uint8_t i = 0; i < PWM_CNT; i++)
     {
         RCC_APB2PeriphClockCmd(pwm[i].apb, ENABLE);
-        _pin_od_init(&pwm[i].forward);
-        _pin_od_init(&pwm[i].back);
-        _pin_od_init(&pwm[i].en);
+        _pin_out_init(&pwm[i].frwd);
+        _pin_out_init(&pwm[i].back);
+        _pin_out_init(&pwm[i].pwm);
     };
     
     // PWM_TIMER
@@ -118,7 +120,7 @@ void bsp_pwm_init(const uint32_t _freq, const uint16_t _grade, const uint16_t _m
     TIM_OCInitTypeDef TIM_OCConfig =
     {
         .TIM_OCMode         = TIM_OCMode_PWM1,
-        .TIM_OutputState    = TIM_OutputState_Enable,
+        .TIM_OutputState    = TIM_OutputState_Disable,
         .TIM_OutputNState   = TIM_OutputNState_Enable,
         .TIM_Pulse          = 0,
         .TIM_OCIdleState    = TIM_OCIdleState_Set,
@@ -143,7 +145,7 @@ void bsp_pwm_brake(void)
     for (uint8_t i = 0; i < PWM_CNT; i++)
     {
         bsp_pwm_set(i, 0);
-        GPIO_SetBits(pwm[i].en.port, pwm[i].en.pin);
+        GPIO_SetBits(pwm[i].pwm.port, pwm[i].pwm.pin);
     }
 }
 
@@ -155,31 +157,22 @@ void bsp_pwm_set(const uint8_t _n, const int16_t _duty)
         if (_duty == 0)
         {
             duty[_n] = 0;
-            GPIO_ResetBits(pwm[_n].en.port, pwm[_n].en.pin);
-            _pin_mode_set(&pwm[_n].forward, GPIO_Mode_Out_PP);
-            _pin_mode_set(&pwm[_n].back   , GPIO_Mode_Out_PP);
+            _pin_out_init(&pwm[_n].pwm);
+            GPIO_ResetBits(pwm[_n].frwd.port, pwm[_n].frwd.pin);
+            GPIO_ResetBits(pwm[_n].back.port, pwm[_n].back.pin);
         }
         else
         {
             duty[_n] = (_duty > grade) ? grade : _duty;
             duty[_n] = (duty[_n] < (-grade)) ? (-grade) : duty[_n];
             
-            int16_t tmp = duty[_n];
+            const uint16_t tmp = abs(duty[_n]) + min_duty;
 
-            if (tmp > 0)
-            {
-                tmp += min_duty;
-                _pin_mode_set(&pwm[_n].back, GPIO_Mode_Out_PP);
+            const gpio_t *const set_pin   = (duty[_n] > 0) ? &pwm[_n].frwd : &pwm[_n].back;
+            const gpio_t *const reset_pin = (duty[_n] < 0) ? &pwm[_n].frwd : &pwm[_n].back;
 
-                _pin_mode_set(&pwm[_n].forward, GPIO_Mode_AF_PP);
-            }
-            else
-            {
-                tmp = grade + tmp;
-                _pin_mode_set(&pwm[_n].forward, GPIO_Mode_Out_PP);
-
-                _pin_mode_set(&pwm[_n].back, GPIO_Mode_AF_PP);
-            }
+            GPIO_ResetBits(reset_pin->port, reset_pin->pin);
+            GPIO_SetBits  (  set_pin->port,   set_pin->pin);
 
             if (_n == PWM_LEFT)
             {
@@ -190,7 +183,7 @@ void bsp_pwm_set(const uint8_t _n, const int16_t _duty)
                 TIM_SetCompare2(PWM_TIMER, tmp);
             }
 
-            GPIO_SetBits(pwm[_n].en.port, pwm[_n].en.pin);
+            _pin_mode_set(&pwm[_n].pwm, GPIO_Mode_AF_PP);
         }
     }
 }
