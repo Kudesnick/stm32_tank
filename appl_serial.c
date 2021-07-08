@@ -60,7 +60,7 @@ bool appl_serial_handle(char *const _str, const uint8_t _max_size)
         
         if (false
             || (sscanf(_str, "L%dR%d%n", &left, &right, &len) == 2 && len == strlen(_str))
-            || (sscanf(_str, "R%dL%d%n", &left, &right, &len) == 2 && len == strlen(_str))
+            || (sscanf(_str, "R%dL%d%n", &right, &left, &len) == 2 && len == strlen(_str))
             )
         {
             bsp_pwm_set(PWM_LEFT, left);
