@@ -17,33 +17,13 @@
 #include "bsp_btn.h"
 #include "bsp_pwm.h"
 
-static int16_t grade;
-static int16_t min_duty;
-static int16_t duty_left, duty_right;
-
-static int16_t _duty_normalise(const int16_t _curr, int16_t _duty)
-{
-    if (_duty > grade) _duty = grade;
-    if (_duty < -grade) _duty = -grade;
-    if (_duty > 0 && _duty < min_duty)
-    {
-        _duty = (_curr == min_duty && _duty == (min_duty - 1)) ? 0 : min_duty;
-    }
-    if (_duty < 0 && _duty > -min_duty)
-    {
-        _duty = (_curr == -min_duty && _duty == (-min_duty + 1)) ? 0 : -min_duty;
-    }
-    
-    return _duty;
-}
+#define INC (16)
+#define MAX (512)
 
 static void _duty_upd(const int16_t _left, const int16_t _right)
 {
-    duty_left = _duty_normalise(duty_left, _left);
-    duty_right = _duty_normalise(duty_right, _right);
-
-    bsp_pwm_set(PWM_LEFT, duty_left);
-    bsp_pwm_set(PWM_RIGHT, duty_right);
+    bsp_pwm_set(PWM_LEFT, _left);
+    bsp_pwm_set(PWM_RIGHT, _right);
 }
 
 static bool _event_ok(const btn_event_t _event)
@@ -54,9 +34,24 @@ static bool _event_ok(const btn_event_t _event)
 static void _pwm_stop(struct btn_s *const _btn, const btn_event_t _event)
 {
     (void)_btn;
+    static bool not_brake = false;
     if (_event != BTN_POP)
     {
         _duty_upd(0, 0);
+        
+        if (_event == BTN_LONG_PRESS)
+        {
+            not_brake = true;
+        }
+    }
+    else
+    {
+        if (!not_brake)
+        {
+            bsp_pwm_brake();
+        }
+        
+        not_brake = false;
     }
 }
 
@@ -65,12 +60,12 @@ static void _pwm_forward(struct btn_s *const _btn, const btn_event_t _event)
     (void)_btn;
     if (_event_ok(_event))
     {
-        const int16_t tmp = (duty_left + duty_right + 2) / 2;
+        const int16_t tmp = (bsp_pwm_get(PWM_LEFT) + bsp_pwm_get(PWM_RIGHT) + INC * 2) / 2;
         _duty_upd(tmp, tmp);
     }
     if (_event == BTN_DBL_CLICK)
     {
-        _duty_upd(grade, grade);
+        _duty_upd(MAX, MAX);
     }
 }
 
@@ -79,12 +74,12 @@ static void _pwm_back(struct btn_s *const _btn, const btn_event_t _event)
     (void)_btn;
     if (_event_ok(_event))
     {
-        const int16_t tmp = (duty_left + duty_right - 2) / 2;
+        const int16_t tmp = (bsp_pwm_get(PWM_LEFT) + bsp_pwm_get(PWM_RIGHT) - INC * 2) / 2;
         _duty_upd(tmp, tmp);
     }
     if (_event == BTN_DBL_CLICK)
     {
-        _duty_upd(-grade, -grade);
+        _duty_upd(-MAX, -MAX);
     }
 }
 
@@ -93,7 +88,7 @@ static void _pwm_left(struct btn_s *const _btn, const btn_event_t _event)
     (void)_btn;
     if (_event_ok(_event))
     {
-        _duty_upd(duty_left - 1, duty_right + 1);
+        _duty_upd(bsp_pwm_get(PWM_LEFT) - INC, bsp_pwm_get(PWM_RIGHT) + INC);
     }
 }
 
@@ -102,7 +97,7 @@ static void _pwm_right(struct btn_s *const _btn, const btn_event_t _event)
     (void)_btn;
     if (_event_ok(_event))
     {
-        _duty_upd(duty_left + 1, duty_right - 1);
+        _duty_upd(bsp_pwm_get(PWM_LEFT) + INC, bsp_pwm_get(PWM_RIGHT) - INC);
     }
 }
 
@@ -114,12 +109,6 @@ btn_t btns[5] =
     {.pin = GPIO_BTN_PIN_D, .event = _pwm_back   },
     {.pin = GPIO_BTN_PIN_R, .event = _pwm_right  },
 };
-
-void appl_btn_init(const uint16_t _grade, const uint16_t _min_duty)
-{
-    grade = _grade;
-    min_duty = _min_duty;
-}
 
 void appl_btn_handle(const uint32_t _period, const uint16_t _port_val)
 {
