@@ -43,7 +43,7 @@ void btn_handle(btn_t *const _btn, const uint32_t _period, const uint16_t _port_
     // Debounce
     if (_btn->prev_status != curr)
     {
-        _btn->timer = (_btn->prev_status == BTN_NA) ? BTN_TOUT_DEB + 1 : 0;
+        _btn->timer = (_btn->prev_status == BTN_NA) ? BTN_TOUT_DEB * 2 : 0;
         _btn->prev_status = curr;
     }
     else
