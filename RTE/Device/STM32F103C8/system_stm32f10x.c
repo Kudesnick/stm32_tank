@@ -266,6 +266,9 @@ void SystemInit (void)
 #else
   SCB->VTOR = FLASH_BASE | VECT_TAB_OFFSET; /* Vector Table Relocation in Internal FLASH. */
 #endif 
+
+  RCC->APB2ENR |= RCC_APB2ENR_AFIOEN;
+  AFIO->MAPR |= AFIO_MAPR_SWJ_CFG_JTAGDISABLE;
 }
 
 /**

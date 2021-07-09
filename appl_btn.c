@@ -26,32 +26,36 @@ static void _duty_upd(const int16_t _left, const int16_t _right)
     bsp_pwm_set(PWM_RIGHT, _right);
 }
 
-static bool _event_ok(const btn_event_t _event)
+__INLINE static bool _event_ok(const btn_event_t _event)
 {
-    return (_event == BTN_CLICK || _event == BTN_LONG_PRESS || _event == BTN_REPEAT);
+    return (_event == BTN_PUSH || _event == BTN_LONG_PRESS || _event == BTN_REPEAT);
 }
 
 static void _pwm_stop(struct btn_s *const _btn, const btn_event_t _event)
 {
     (void)_btn;
     static bool not_brake = false;
-    if (_event != BTN_POP)
+    switch (_event)
     {
-        _duty_upd(0, 0);
+        case BTN_PUSH:
+            _duty_upd(0, 0);
+            break;
+    
+        case BTN_POP:
+            if (!not_brake)
+            {
+                bsp_pwm_brake();
+            }
+            
+            not_brake = false;
+            break;
         
-        if (_event == BTN_LONG_PRESS)
-        {
+        case BTN_LONG_PRESS:
             not_brake = true;
-        }
-    }
-    else
-    {
-        if (!not_brake)
-        {
-            bsp_pwm_brake();
-        }
+            break;
         
-        not_brake = false;
+        default:
+            break;
     }
 }
 
