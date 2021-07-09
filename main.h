@@ -16,4 +16,5 @@
 #define PWM_FREQ        (200)   // (Hz)
 #define PWM_MIN_DUTY    (64)
 #define BUF_SIZE        (32)
+// #define UART_BAUD       (57600) // Debug only, ST-Link VCP doesn't work at a higher baudrate
 #define UART_BAUD       (115200)

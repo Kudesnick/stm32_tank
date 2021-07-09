@@ -26,9 +26,9 @@ static void _duty_upd(const int16_t _left, const int16_t _right)
     bsp_pwm_set(PWM_RIGHT, _right);
 }
 
-static bool _event_ok(const btn_event_t _event)
+__INLINE static bool _event_ok(const btn_event_t _event)
 {
-    return (_event == BTN_CLICK || _event == BTN_LONG_PRESS || _event == BTN_REPEAT);
+    return (_event == BTN_PUSH || _event == BTN_LONG_PRESS || _event == BTN_REPEAT);
 }
 
 static void _pwm_stop(struct btn_s *const _btn, const btn_event_t _event)

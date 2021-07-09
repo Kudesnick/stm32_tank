@@ -8,7 +8,8 @@
  * @copyright Copyright (c) 2021
  * 
  */
- 
+
+#include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -17,9 +18,75 @@
 #include "bsp_pwm.h"
 #include "main.h"
 
+static void _add_dig(char *const _str, int16_t _val)
+{
+    uint8_t ptr = strlen(_str);
+    
+    if (_val < 0)
+    {
+        _str[ptr++] = '-';
+        _val = abs(_val);
+    }
+    
+    uint8_t dig_num = (_val == 0) ? 1 : 0;
+    for (uint16_t tmp = _val; tmp > 0; tmp /= 10, dig_num++);
+    
+    ptr += dig_num;
+    _str[ptr--] = '\0';
+    
+    for (uint16_t tmp = _val; dig_num > 0; tmp /= 10, dig_num--)
+    {
+        _str[ptr--] = tmp % 10 + '0';
+        
+    }
+}
+
+static void _dig_decode(char **_str, int16_t *_val)
+{
+    int16_t val = 0;
+    bool neg = false;
+    
+    if (**_str == '-')
+    {
+        neg = true;
+        (*_str)++;
+    }
+    
+    if (**_str < '0' || **_str > '9') return;
+    
+    for (;**_str >= '0' && **_str <= '9'; (*_str)++)
+    {
+        val = val * 10 + **_str - '0';
+    }
+    
+    *_val = (neg) ? -val : val;
+}
+
+static void _lr_decode(char *_str, int16_t *_left, int16_t *_right)
+{
+    int16_t left = *_left, right = *_right;
+
+    while(*_str != '\0')
+    {
+        switch (*_str)
+        {
+            case (char)'L': _str++; _dig_decode(&_str, &left ); break;
+            case (char)'R': _str++; _dig_decode(&_str, &right); break;
+            default: return;
+        }
+    }
+    
+    *_left = left;
+    *_right = right;
+}
+
 static void _print_state(char *const _str)
 {
-    sprintf(_str, "L:%d R:%d\r", bsp_pwm_get(PWM_LEFT), bsp_pwm_get(PWM_RIGHT));
+    strcpy(_str, "L:");
+    _add_dig(_str, bsp_pwm_get(PWM_LEFT));
+    strcat(_str, "R:");
+    _add_dig(_str, bsp_pwm_get(PWM_RIGHT));
+    strcat(_str, "\r");
 }
 
 bool appl_serial_handle(char *const _str, const uint8_t _max_size)
@@ -42,11 +109,15 @@ bool appl_serial_handle(char *const _str, const uint8_t _max_size)
     }
     else if (strcmp("date", _str) == 0)
     {
-        sprintf(_str, __DATE__ "[" __TIME__ "]" "\r");
+        strcpy(_str, __DATE__ "[" __TIME__ "]" "\r");
     }
     else if (strcmp("info", _str) == 0)
     {
-        sprintf(_str, "freq:%d grade:%d\r", PWM_FREQ, PWM_GRADE);
+        strcpy(_str, "freq:");
+        _add_dig(_str, PWM_FREQ);
+        strcat(_str, " grade:");
+        _add_dig(_str, PWM_GRADE);
+        strcat(_str, "\r");
     }
     else if (strcmp("state", _str) == 0)
     {
@@ -54,33 +125,15 @@ bool appl_serial_handle(char *const _str, const uint8_t _max_size)
     }
     else
     {
-        int left  = 0;
-        int right = 0;
-        int len   = 0;
+        int16_t left  = bsp_pwm_get(PWM_LEFT);
+        int16_t right = bsp_pwm_get(PWM_RIGHT);
+
+        _lr_decode(_str, &left, &right);
         
-        if (false
-            || (sscanf(_str, "L%dR%d%n", &left, &right, &len) == 2 && len == strlen(_str))
-            || (sscanf(_str, "R%dL%d%n", &right, &left, &len) == 2 && len == strlen(_str))
-            )
-        {
-            bsp_pwm_set(PWM_LEFT, left);
-            bsp_pwm_set(PWM_RIGHT, right);
-            _print_state(_str);
-        }
-        else if (sscanf(_str, "L%d%n", &left, &len) == 1 && len == strlen(_str))
-        {
-            bsp_pwm_set(PWM_LEFT, left);
-            _print_state(_str);
-        }
-        else if (sscanf(_str, "R%d%n", &right, &len) == 1 && len == strlen(_str))
-        {
-            bsp_pwm_set(PWM_RIGHT, right);
-            _print_state(_str);
-        }
-        else
-        {
-            strcpy(_str, "Bad syntax!\r");
-        }
+        bsp_pwm_set(PWM_LEFT, left);
+        bsp_pwm_set(PWM_RIGHT, right);
+        
+        _print_state(_str);
     }
 
     return true;
